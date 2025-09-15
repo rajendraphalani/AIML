@@ -1,0 +1,75 @@
+from collections import defaultdict
+
+# Define courses with faculty, room info, and lab requirement
+courses = {
+    "C1": {"faculty": "F1", "room": "R1", "lab": False},
+    "C2": {"faculty": "F2", "room": "R2", "lab": True},
+    "C3": {"faculty": "F1", "room": "R3", "lab": False},
+    "C4": {"faculty": "F3", "room": "R2", "lab": True},
+    "C5": {"faculty": "F4", "room": "R1", "lab": False},
+}
+
+# Domain: 3 available slots per day
+slots = ["Slot1", "Slot2", "Slot3"]
+
+# Define lab-available slots (e.g., labs only in Slot2 and Slot3)
+lab_slots = ["Slot2", "Slot3"]
+
+domains = {}
+for course, details in courses.items():
+    if details["lab"]:
+        domains[course] = lab_slots[:]  # labs only allowed in specific slots
+    else:
+        domains[course] = slots[:]
+
+# Check constraints
+def is_consistent(assignment, course, slot):
+    faculty = courses[course]["faculty"]
+    room = courses[course]["room"]
+    for c, s in assignment.items():
+        if s == slot:
+            if courses[c]["faculty"] == faculty:
+                return False  # faculty conflict
+            if courses[c]["room"] == room:
+                return False  # room conflict
+    return True
+
+# Minimum Remaining Values (MRV) heuristic
+def select_unassigned_variable(assignment, domains):
+    unassigned = [v for v in domains if v not in assignment]
+    # choose variable with fewest legal values
+    return min(unassigned, key=lambda var: len(domains[var]))
+
+# Backtracking search
+def backtrack(assignment, domains):
+    if len(assignment) == len(courses):
+        return assignment
+    
+    var = select_unassigned_variable(assignment, domains)
+    for value in domains[var]:
+        if is_consistent(assignment, var, value):
+            assignment[var] = value
+            # forward check: reduce domain
+            new_domains = {v: d[:] for v, d in domains.items()}
+            new_domains[var] = [value]
+            result = backtrack(assignment, new_domains)
+            if result:
+                return result
+            del assignment[var]
+    return None
+
+# Solve
+solution = backtrack({}, domains)
+
+# Print timetable
+if solution:
+    print("Final Timetable:")
+    print("Course | Faculty | Room | Lab  | Slot")
+    print("-"*45)
+    for course, slot in solution.items():
+        f = courses[course]["faculty"]
+        r = courses[course]["room"]
+        lab = "Yes" if courses[course]["lab"] else "No"
+        print(f"{course:6} | {f:7} | {r:4} | {lab:3} | {slot}")
+else:
+    print("No valid timetable found!")
